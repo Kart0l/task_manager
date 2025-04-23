@@ -9,25 +9,23 @@ import datetime
 
 
 class BaseTestCase(TestCase):
-    """Базовий клас для тестів з загальними методами"""
     def setUp(self):
         self.user = User.objects.create_user(
-            username='testuser',
-            password='testpass123'
+            username="testuser",
+            password="testpass123"
         )
-        # Створюємо профіль тільки якщо його ще немає
-        if not hasattr(self.user, 'profile'):
+
+        if not hasattr(self.user, "profile"):
             self.profile = Profile.objects.create(
                 user=self.user,
-                role='developer'
+                role="developer"
             )
         else:
             self.profile = self.user.profile
         self.client = Client()
-        self.client.login(username='testuser', password='testpass123')
+        self.client.login(username="testuser", password="testpass123")
 
     def tearDown(self):
-        # Видаляємо користувача, профіль буде видалено автоматично через CASCADE
         self.user.delete()
 
 
@@ -35,13 +33,13 @@ class TaskModelTest(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.task = Task.objects.create(
-            title='Test Task',
-            description='Test Description',
+            title="Test Task",
+            description="Test Description",
             author=self.user,
-            status='todo',
-            priority='medium',
+            status="todo",
+            priority="medium",
             deadline=timezone.now() + datetime.timedelta(days=1),
-            task_type='bug'
+            task_type="bug"
         )
 
     def tearDown(self):
@@ -49,13 +47,11 @@ class TaskModelTest(BaseTestCase):
         super().tearDown()
 
     def test_task_creation(self):
-        """Тест створення завдання"""
-        self.assertEqual(self.task.title, 'Test Task')
-        self.assertEqual(self.task.status, 'todo')
+        self.assertEqual(self.task.title, "Test Task")
+        self.assertEqual(self.task.status, "todo")
         self.assertEqual(self.task.author, self.user)
 
     def test_task_is_overdue(self):
-        """Тест перевірки простроченого завдання"""
         self.assertFalse(self.task.is_overdue())
         self.task.deadline = timezone.now() - datetime.timedelta(days=1)
         self.assertTrue(self.task.is_overdue())
@@ -63,25 +59,23 @@ class TaskModelTest(BaseTestCase):
 
 class ProfileModelTest(BaseTestCase):
     def test_profile_creation(self):
-        """Тест створення профілю"""
-        # Оновлюємо роль профілю
-        self.profile.role = 'developer'
+        self.profile.role = "developer"
         self.profile.save()
-        self.assertEqual(self.profile.role, 'developer')
-        self.assertEqual(self.profile.user.username, 'testuser')
+        self.assertEqual(self.profile.role, "developer")
+        self.assertEqual(self.profile.user.username, "testuser")
 
 
 class ViewTests(BaseTestCase):
     def setUp(self):
         super().setUp()
         self.task = Task.objects.create(
-            title='Test Task',
-            description='Test Description',
+            title="Test Task",
+            description="Test Description",
             author=self.user,
-            status='todo',
-            priority='medium',
+            status="todo",
+            priority="medium",
             deadline=timezone.now() + datetime.timedelta(days=1),
-            task_type='bug'
+            task_type="bug"
         )
 
     def tearDown(self):
@@ -89,26 +83,21 @@ class ViewTests(BaseTestCase):
         super().tearDown()
 
     def test_dashboard_view(self):
-        """Тест головної сторінки"""
-        response = self.client.get(reverse('tasks:dashboard'))
+        response = self.client.get(reverse("tasks:dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'tasks/dashboard.html')
+        self.assertTemplateUsed(response, "tasks/dashboard.html")
 
     def test_task_detail_view(self):
-        """Тест сторінки деталей завдання"""
-        # Створюємо призначеного виконавця
         self.task.assignee = self.user
         self.task.save()
-        response = self.client.get(reverse('tasks:task_detail', args=[self.task.pk]))
+        response = self.client.get(reverse("tasks:task_detail", args=[self.task.pk]))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'tasks/task_detail.html')
+        self.assertTemplateUsed(response, "tasks/task_detail.html")
 
     def test_complete_task_view(self):
-        """Тест завершення завдання"""
-        # Створюємо призначеного виконавця
         self.task.assignee = self.user
         self.task.save()
-        response = self.client.get(reverse('tasks:complete_task', args=[self.task.pk]))
+        response = self.client.get(reverse("tasks:complete_task", args=[self.task.pk]))
         self.assertEqual(response.status_code, 302)  # Redirect status
         self.task.refresh_from_db()
-        self.assertEqual(self.task.status, 'done')
+        self.assertEqual(self.task.status, "done")
