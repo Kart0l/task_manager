@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ task.title }} - Task details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- main -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h1 class="card-title mb-0">{{ task.title }}</h1>
+                        {% if can_edit %}
+                        <div class="btn-group">
+                            <a href="{% url 'tasks:task_update' task.pk %}" class="btn btn-outline-primary">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'tasks:task_delete' task.pk %}" class="btn btn-outline-danger">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Status&priority -->
+                    <div class="mb-4">
+                        <span class="badge {% if task.status == 'new' %}bg-info{% elif task.status == 'in_progress' %}bg-warning{% else %}bg-success{% endif %} me-2">
+                            <i class="fas fa-tasks"></i> 
+                            {{ task.get_status_display }}
+                        </span>
+                        <span class="badge {% if task.priority == 'high' %}bg-danger{% elif task.priority == 'medium' %}bg-warning{% else %}bg-secondary{% endif %}">
+                            <i class="fas fa-flag"></i> 
+                            {{ task.get_priority_display }}
+                        </span>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-align-left"></i> Description</h5>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                {{ task.description|linebreaks }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Task type -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-tag"></i> Task type</h5>
+                        <span class="badge bg-info">{{ task.get_task_type_display }}</span>
+                    </div>
+
+                    <!-- Comments -->
+                    <div class="mb-4">
+                        <h5><i class="fas fa-comments"></i> Comments</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <!-- Form for adding a comment -->
+                                <form id="comment-form" class="mb-4">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <textarea class="form-control" id="comment-text" rows="3" placeholder="Add a comment..."></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Add a comment</button>
+                                </form>
+
+                                <!-- Comments list -->
+                                <div id="comments-list">
+                                    {% for comment in comments %}
+                                    <div class="card mb-3" id="comment-{{ comment.id }}">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="card-subtitle mb-2 text-muted">
+                                                        {{ comment.author.username }}
+                                                        <small class="text-muted">{{ comment.created_at|date:"d.m.Y H:i" }}</small>
+                                                        {% if comment.updated_at != comment.created_at %}
+                                                        <small class="text-muted">(ed. {{ comment.updated_at|date:"d.m.Y H:i" }})</small>
+                                                        {% endif %}
+                                                    </h6>
+                                                    <p class="card-text comment-text">{{ comment.text|linebreaks }}</p>
+                                                    {% if comment.author == user %}
+                                                    <div class="comment-edit-form d-none">
+                                                        <textarea class="form-control mb-2" rows="3">{{ comment.text }}</textarea>
+                                                        <button class="btn btn-sm btn-primary save-edit" data-comment-id="{{ comment.id }}">Save</button>
+                                                        <button class="btn btn-sm btn-secondary cancel-edit" data-comment-id="{{ comment.id }}">Cancel</button>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="btn-group">
+                                                    {% if comment.author == user %}
+                                                    <button class="btn btn-sm btn-outline-primary edit-comment" data-comment-id="{{ comment.id }}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    {% if comment.author == user or user.profile.role == 'pm' %}
+                                                    <button class="btn btn-sm btn-outline-danger delete-comment" data-comment-id="{{ comment.id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <p class="text-muted">No comments yet</p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side column -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle"></i> Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <small class="text-muted"><i class="fas fa-user"></i> Author</small><br>
+                            {{ task.author.get_full_name|default:task.author.username }} ({{ task.author.profile.get_role_display }})
+                        </li>
+                        <li class="mb-3">
+                            <small class="text-muted"><i class="fas fa-user-check"></i> Performer</small><br>
+                            {{ task.assignee.get_full_name|default:task.assignee.username|default:"Not assigned" }}{% if task.assignee %} ({{ task.assignee.profile.get_role_display }}){% endif %}
+                        </li>
+                        <li class="mb-3">
+                            <small class="text-muted"><i class="fas fa-calendar-plus"></i> Created</small><br>
+                            {{ task.created_at|date:"d.m.Y H:i" }}
+                        </li>
+                        {% if task.deadline %}
+                        <li class="mb-3">
+                            <small class="text-muted"><i class="fas fa-clock"></i> Deadline</small><br>
+                            <span class="{% if task.is_overdue %}text-danger{% endif %}">
+                                {{ task.deadline|date:"d.m.Y" }}
+                                {% if task.is_overdue %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                                {% endif %}
+                            </span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+
+    $('#comment-form').on('submit', function(e) {
+        e.preventDefault();
+        const text = $('#comment-text').val();
+        const taskId = {{ task.id }};
+        
+        $.ajax({
+            url: `/task/${taskId}/comment/create/`,
+            method: 'POST',
+            data: {
+                text: text,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    const commentHtml = `
+                        <div class="card mb-3" id="comment-${response.comment.id}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="card-subtitle mb-2 text-muted">
+                                            ${response.comment.author}
+                                            <small class="text-muted">${response.comment.created_at}</small>
+                                        </h6>
+                                        <p class="card-text comment-text">${response.comment.text}</p>
+                                        <div class="comment-edit-form d-none">
+                                            <textarea class="form-control mb-2" rows="3">${response.comment.text}</textarea>
+                                            <button class="btn btn-sm btn-primary save-edit" data-comment-id="${response.comment.id}">Save</button>
+                                            <button class="btn btn-sm btn-secondary cancel-edit" data-comment-id="${response.comment.id}">Cancel</button>
+                                        </div>
+                                    </div>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-primary edit-comment" data-comment-id="${response.comment.id}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger delete-comment" data-comment-id="${response.comment.id}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    $('#comments-list').prepend(commentHtml);
+                    $('#comment-text').val('');
+                }
+            }
+        });
+    });
+
+
+    $(document).on('click', '.edit-comment', function() {
+        const commentId = $(this).data('comment-id');
+        const $comment = $(`#comment-${commentId}`);
+        $comment.find('.comment-text').addClass('d-none');
+        $comment.find('.comment-edit-form').removeClass('d-none');
+        $comment.find('.edit-comment').addClass('d-none');
+    });
+
+    $(document).on('click', '.cancel-edit', function() {
+        const commentId = $(this).data('comment-id');
+        const $comment = $(`#comment-${commentId}`);
+        $comment.find('.comment-text').removeClass('d-none');
+        $comment.find('.comment-edit-form').addClass('d-none');
+        $comment.find('.edit-comment').removeClass('d-none');
+    });
+
+    $(document).on('click', '.save-edit', function() {
+        const commentId = $(this).data('comment-id');
+        const $comment = $(`#comment-${commentId}`);
+        const newText = $comment.find('.comment-edit-form textarea').val();
+        
+        $.ajax({
+            url: `/comment/${commentId}/update/`,
+            method: 'POST',
+            data: {
+                text: newText,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    $comment.find('.comment-text').text(response.comment.text).removeClass('d-none');
+                    $comment.find('.comment-edit-form').addClass('d-none');
+                    $comment.find('.edit-comment').removeClass('d-none');
+                    
+
+                    if (response.comment.updated_at) {
+                        const $subtitle = $comment.find('.card-subtitle');
+                        if (!$subtitle.find('.updated-at').length) {
+                            $subtitle.append(` <small class="text-muted">(ред. ${response.comment.updated_at})</small>`);
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+
+    $(document).on('click', '.delete-comment', function() {
+        const commentId = $(this).data('comment-id');
+        if (confirm('Are you sure you want to delete this comment?')) {
+            $.ajax({
+                url: `/comment/${commentId}/delete/`,
+                method: 'POST',
+                data: {
+                    csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $(`#comment-${commentId}`).remove();
+                    }
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+@media (max-width: 991.98px) {
+    .btn-group {
+        margin-top: 1rem;
+    }
+    .card-title {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %} 

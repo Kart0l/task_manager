@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if task %}Editing a task{% else %}Creating task{% endif %}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0">{% if task %}Editing a task{% else %}Creating task{% endif %}</h2>
+            </div>
+            <div class="card-body">
+                <form id="taskForm" method="post" class="needs-validation" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="id_title" class="form-label">Назва</label>
+                        <input type="text" class="form-control {% if form.title.errors %}is-invalid{% endif %}" 
+                               id="id_title" name="title" value="{{ form.title.value|default:'' }}" required>
+                        {% if form.title.errors %}
+                            <div class="invalid-feedback">{{ form.title.errors|join:", " }}</div>
+                        {% else %}
+                            <div class="invalid-feedback">Please enter a task name.</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description</label>
+                        <textarea class="form-control {% if form.description.errors %}is-invalid{% endif %}" 
+                                  id="id_description" name="description" rows="4">{{ form.description.value|default:'' }}</textarea>
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback">{{ form.description.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_status" class="form-label">Status</label>
+                        <select class="form-select {% if form.status.errors %}is-invalid{% endif %}" 
+                                id="id_status" name="status" required>
+                            {% for value, label in form.fields.status.choices %}
+                                <option value="{{ value }}" {% if form.status.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.status.errors %}
+                            <div class="invalid-feedback">{{ form.status.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_deadline" class="form-label">Deadline</label>
+                        <input type="datetime-local" class="form-control {% if form.deadline.errors %}is-invalid{% endif %}" 
+                               id="id_deadline" name="deadline" 
+                               value="{{ form.deadline.value|date:'Y-m-d\TH:i'|default:'' }}" required>
+                        {% if form.deadline.errors %}
+                            <div class="invalid-feedback">{{ form.deadline.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_priority" class="form-label">Priority</label>
+                        <select class="form-select {% if form.priority.errors %}is-invalid{% endif %}" 
+                                id="id_priority" name="priority">
+                            {% for value, label in form.fields.priority.choices %}
+                                <option value="{{ value }}" {% if form.priority.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.priority.errors %}
+                            <div class="invalid-feedback">{{ form.priority.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_task_type" class="form-label">Task type</label>
+                        <select class="form-select {% if form.task_type.errors %}is-invalid{% endif %}" 
+                                id="id_task_type" name="task_type" required>
+                            {% for value, label in form.fields.task_type.choices %}
+                                <option value="{{ value }}" {% if form.task_type.value == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if form.task_type.errors %}
+                            <div class="invalid-feedback">{{ form.task_type.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_assignee" class="form-label">Assign</label>
+                        <select class="form-select {% if form.assignee.errors %}is-invalid{% endif %}" 
+                                id="id_assignee" name="assignee">
+                            {% for user in form.fields.assignee.queryset %}
+                                <option value="{{ user.id }}" {% if form.assignee.value == user.id|stringformat:"i" %}selected{% endif %}>
+                                    {{ user.get_full_name|default:user.username }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if form.assignee.errors %}
+                            <div class="invalid-feedback">{{ form.assignee.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            {% if task %}Save changes{% else %}Create task{% endif %}
+                        </button>
+                        <a href="{% url 'tasks:dashboard' %}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    const form = $('#taskForm');
+    const submitBtn = $('#submitBtn');
+    
+    form.on('submit', function(e) {
+        e.preventDefault();
+        
+
+        form.addClass('loading');
+        submitBtn.prop('disabled', true);
+        
+        $.ajax({
+            url: form.attr('action') || window.location.pathname,
+            type: 'POST',
+            data: form.serialize(),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                if (response.success) {
+                    showToast(response.message, 'success');
+                    setTimeout(function() {
+                        window.location.href = "{% url 'tasks:dashboard' %}";
+                    }, 1500);
+                } else {
+                    showToast('Error saving task', 'danger');
+
+                    if (response.errors) {
+                        Object.keys(response.errors).forEach(function(field) {
+                            const input = $(`#id_${field}`);
+                            input.addClass('is-invalid');
+                            input.next('.invalid-feedback').text(response.errors[field].join(', '));
+                        });
+                    }
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'Error saving task';
+                if (xhr.responseJSON && xhr.responseJSON.errors) {
+
+                    Object.keys(xhr.responseJSON.errors).forEach(function(field) {
+                        const input = $(`#id_${field}`);
+                        input.addClass('is-invalid');
+                        input.next('.invalid-feedback').text(xhr.responseJSON.errors[field].join(', '));
+                    });
+                    errorMessage = Object.values(xhr.responseJSON.errors).flat().join(', ');
+                }
+                showToast(errorMessage, 'danger');
+            },
+            complete: function() {
+                form.removeClass('loading');
+                submitBtn.prop('disabled', false);
+            }
+        });
+    });
+
+
+    form.find(':input').on('input change', function() {
+        $(this).removeClass('is-invalid');
+        $(this).next('.invalid-feedback').empty();
+    });
+});
+
+function showToast(message, type) {
+    const toast = $(`<div class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>`);
+    
+    $('.toast-container').append(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.on('hidden.bs.toast', function() {
+        $(this).remove();
+    });
+}
+</script>
+{% endblock %} 
