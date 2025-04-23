@@ -46,13 +46,23 @@ class TaskService:
 
         return queryset
 
+
     @staticmethod
     def has_task_permission(task, user, permission_type):
-        if permission_type == "delete":
-            return user == task.author or user.profile.role == "pm"
-        elif permission_type == "update_status":
-            return user == task.assignee or user.profile.role == "pm"
+        print(
+            f"Checking permission for user {user.username}, task {task.title}, type {permission_type}")  # Діагностика
+        try:
+            if permission_type == "delete":
+                return user == task.author or user.profile.role == "pm"
+            elif permission_type == "update_status":
+                return user == task.assignee or user.profile.role == "pm"
+            elif permission_type == "edit":
+                return user == task.author or user == task.assignee or user.profile.role == "pm"
+        except Profile.DoesNotExist:
+            print(f"User {user.username} has no profile")
+            return False
         return False
+
 
     @staticmethod
     def update_task_status(task, new_status, user):
