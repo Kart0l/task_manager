@@ -1,0 +1,1 @@
+web: gunicorn task_manager.wsgi:application --workers 1 --threads 10 

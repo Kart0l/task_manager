@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Authorization error{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-circle text-danger fa-3x mb-3"></i>
+                    <h2 class="mb-4">Authorization error</h2>
+                    
+                    {% if error %}
+                        <p class="text-danger mb-4">{{ error }}</p>
+                    {% else %}
+                        <p class="text-danger mb-4">An error occurred while authorizing through Google.</p>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'login' %}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Return to login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
