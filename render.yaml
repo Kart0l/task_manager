@@ -7,6 +7,8 @@ services:
     envVars:
       - key: DJANGO_ENV
         value: prod
+      - key: DJANGO_SETTINGS_MODULE
+        value: task_manager.settings
       - key: DATABASE_URL
         value: postgresql://neondb_owner:npg_seqtygkp5lF6@ep-lucky-frost-a2od4yqd-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require
       - key: SECRET_KEY
