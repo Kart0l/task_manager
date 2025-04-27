@@ -1,7 +1,8 @@
 from django.db.models import Q, Count
 from django.utils import timezone
 from .models import Task
-from .standart_value import STATUS_CHOICES
+from core.standard_values import STATUS_CHOICES
+from accounts.models import Profile
 
 class TaskService:
 

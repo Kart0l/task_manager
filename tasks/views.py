@@ -1,33 +1,62 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, View
 from django.urls import reverse_lazy
 from django.utils import timezone
 from .models import Task, Comment
-from .forms import TaskForm, TaskFilterForm, UserRegisterForm, CommentForm
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
+from .forms import TaskForm, TaskFilterForm, CommentForm
 from django.utils.translation import gettext_lazy as _
 from .mixins import AjaxFormMixin, AjaxListMixin, AjaxActionMixin
 from .service import TaskService
 from django.http import JsonResponse
+from core.standard_values import STATUS_CHOICES
 
 
-def register(request):
-    if request.method == "POST":
-        form = UserRegisterForm(request.POST)
+class UpdateTaskStatusView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        task = get_object_or_404(Task, pk=pk)
+        if TaskService.has_task_permission(task, request.user, "update_status"):
+            new_status = request.POST.get("status")
+            if new_status in dict(STATUS_CHOICES):
+                task.status = new_status
+                task.save()
+                return JsonResponse({"status": "success"})
+        return JsonResponse({"status": "error"}, status=400)
+
+
+class CompleteTaskView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        task = get_object_or_404(Task, pk=pk)
+        if task.assignee == request.user or request.user.profile.role == "pm":
+            task.status = "done"
+            task.save()
+            return JsonResponse({"status": "success"})
+        return JsonResponse({"status": "error"}, status=400)
+
+
+class CreateCommentView(LoginRequiredMixin, View):
+    def post(self, request, task_id):
+        task = get_object_or_404(Task, pk=task_id)
+        form = CommentForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("login")
-    else:
-        form = UserRegisterForm()
-    return render(request, "tasks/register.html", {"form": form})
+            comment = form.save(commit=False)
+            comment.task = task
+            comment.author = request.user
+            comment.save()
+            return JsonResponse({
+                "status": "success",
+                "comment": {
+                    "text": comment.text,
+                    "created_at": comment.created_at.strftime("%Y-%m-%d %H:%M"),
+                    "user": comment.author.username
+                }
+            })
+        return JsonResponse({"status": "error"}, status=400)
 
 
 class TaskListView(LoginRequiredMixin, AjaxListMixin, ListView):
     model = Task
-    template_name = "tasks/dashboard.html"  #
+    template_name = "tasks/dashboard.html"  
     context_object_name = "tasks"
     paginate_by = 10
     ajax_template_name = "tasks/task_list_partial.html"
@@ -105,36 +134,6 @@ class TaskDeleteView(LoginRequiredMixin, AjaxActionMixin, DeleteView):
         return self.error_response(_("Insufficient rights to delete task"), status=403)
 
 
-@login_required
-def profile(request):
-    stats = TaskService.get_task_statistics(user=request.user, filter_by="author")
-    recent_completed = TaskService.get_user_tasks(
-        user=request.user,
-        filters={"status": "done"},
-        sort="-created_at",
-        prefetch=["author", "assignee"]
-    )[:5]
-    upcoming_deadlines = TaskService.get_user_tasks(
-        user=request.user,
-        filters={"status__in": ["todo", "in_progress"], "deadline__gte": timezone.now()},
-        sort="deadline",
-        prefetch=["author", "assignee"]
-    )[:5]
-
-    context = {
-        "profile": request.user.profile,
-        "total_tasks": stats["total_tasks"],
-        "completed_tasks": stats["completed_tasks"],
-        "in_progress_tasks": stats["in_progress_tasks"],
-        "overdue_tasks": stats["overdue_tasks"],
-        "priority_stats": stats["priority_stats"],
-        "status_stats": stats["status_stats"],
-        "recent_completed": recent_completed,
-        "upcoming_deadlines": upcoming_deadlines,
-    }
-    return render(request, "tasks/profile.html", context)
-
-
 class TaskListByTypeView(LoginRequiredMixin, AjaxListMixin, ListView):
     model = Task
     template_name = "tasks/task_list.html"
@@ -156,25 +155,6 @@ class TaskListByTypeView(LoginRequiredMixin, AjaxListMixin, ListView):
         return context
 
 
-@require_http_methods(["POST"])
-@login_required
-@csrf_exempt
-def update_task_status(request, pk):
-    mixin = AjaxActionMixin()
-    try:
-        task = Task.objects.get(id=pk)
-        new_status = request.POST.get("status")
-        TaskService.update_task_status(task, new_status, request.user)
-        return mixin.success_response(_("Task status updated"))
-    except Task.DoesNotExist:
-        return mixin.error_response(_("Task not found"), status=404)
-    except PermissionError as e:
-        return mixin.error_response(e, status=403)
-    except ValueError as e:
-        return mixin.error_response(e, status=400)
-    except Exception as e:
-        return mixin.error_response(e, status=500)
-
 
 class TaskDetailView(LoginRequiredMixin, DetailView):
     model = Task
@@ -186,41 +166,3 @@ class TaskDetailView(LoginRequiredMixin, DetailView):
         task = self.get_object()
         context["can_edit"] = TaskService.has_task_permission(task, self.request.user, "update_status")
         return context
-
-
-@login_required
-def complete_task(request, pk):
-    task = get_object_or_404(Task, pk=pk)
-    if TaskService.has_task_permission(task, request.user, "update_status"):
-        task.status = "done"
-        task.save()
-        return redirect("tasks:dashboard")
-    return redirect("tasks:dashboard")
-
-
-@login_required
-@require_http_methods(["POST"])
-def create_comment(request, task_id):
-    task = get_object_or_404(Task, id=task_id)
-    form = CommentForm(request.POST)
-    
-    if form.is_valid():
-        comment = form.save(commit=False)
-        comment.task = task
-        comment.author = request.user
-        comment.save()
-        
-        return JsonResponse({
-            'success': True,
-            'comment': {
-                'id': comment.id,
-                'text': comment.text,
-                'author': comment.author.username,
-                'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M:%S')
-            }
-        })
-    
-    return JsonResponse({
-        'success': False,
-        'errors': form.errors
-    }, status=400)

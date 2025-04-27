@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
@@ -7,48 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.css">
-    <style>
-        .navbar-brand {
-            font-weight: bold;
-        }
-        .task-card {
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
-            cursor: move;
-        }
-        .task-card.dragging {
-            opacity: 0.5;
-            transform: scale(0.95);
-        }
-        .task-status {
-            font-weight: bold;
-        }
-        .status-todo { color: #6c757d; }
-        .status-in-progress { color: #0dcaf0; }
-        .status-done { color: #198754; }
-        .status-overdue { color: #dc3545; }
-        .loading {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        .toast-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
-        }
-        .status-column {
-            min-height: 200px;
-            background-color: #f8f9fa;
-            border-radius: 0.25rem;
-            padding: 1rem;
-        }
-        .status-column h5 {
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid #dee2e6;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -64,7 +25,7 @@
                             <a class="nav-link" href="{% url 'tasks:dashboard' %}">Home</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'tasks:profile' %}">Profile</a>
+                            <a class="nav-link" href="{% url 'accounts:profile' %}">Profile</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -74,17 +35,17 @@
                             <span class="nav-link">Hello, {{ user.username }}!</span>
                         </li>
                         <li class="nav-item">
-                            <form method="post" action="{% url 'logout' %}" class="d-inline">
+                            <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="btn nav-link">Logout</button>
                             </form>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'login' %}">Sign in</a>
+                            <a class="nav-link" href="{% url 'accounts:login' %}">Sign in</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'tasks:register' %}">Registration</a>
+                            <a class="nav-link" href="{% url 'accounts:register' %}">Registration</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -101,106 +62,15 @@
             {% endfor %}
         {% endif %}
         
-        <!-- Toast container -->
-        <div class="toast-container position-fixed top-0 end-0 p-3"></div>
+        <div class="toast-container"></div>
         
         {% block content %}{% endblock %}
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <script>
-        function showToast(message, type = 'success') {
-            const toastContainer = document.querySelector('.toast-container');
-            const toast = document.createElement('div');
-            toast.className = `toast align-items-center text-white bg-${type} border-0`;
-            toast.setAttribute('role', 'alert');
-            toast.setAttribute('aria-live', 'assertive');
-            toast.setAttribute('aria-atomic', 'true');
-            
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            `;
-            
-            toastContainer.appendChild(toast);
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-            
-            toast.addEventListener('hidden.bs.toast', () => {
-                toast.remove();
-            });
-        }
-
-        function handleAjaxError(xhr, status, error) {
-            console.error('AJAX Error:', status, error);
-            showToast('Error while performing the operation', 'danger');
-        }
-
-        // CSRF token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
-        const csrftoken = getCookie('csrftoken');
-
-        $.ajaxSetup({
-            beforeSend: function(xhr, settings) {
-                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
-                }
-            }
-        });
-
-        $(document).on('submit', 'form[action*="complete_task"]', function(e) {
-            e.preventDefault();
-            const form = $(this);
-            const button = form.find('button[type="submit"]');
-            const card = form.closest('.task-card');
-            
-            button.prop('disabled', true);
-            card.addClass('loading');
-            
-            $.ajax({
-                url: form.attr('action'),
-                type: 'POST',
-                data: form.serialize(),
-                success: function(response) {
-                    if (response.success) {
-                        showToast(response.message);
-                        // update status
-                        const statusBadge = card.find('.badge:first');
-                        statusBadge.removeClass('bg-todo bg-in_progress bg-overdue').addClass('bg-done');
-                        statusBadge.text('Виконано');
-                        form.hide();
-                    } else {
-                        showToast(response.error || 'Error completing task', 'danger');
-                    }
-                },
-                error: handleAjaxError,
-                complete: function() {
-                    button.prop('disabled', false);
-                    card.removeClass('loading');
-                }
-            });
-        });
-    </script>
+    <script src="{% static 'js/base.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html> 

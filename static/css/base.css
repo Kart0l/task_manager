@@ -1,0 +1,40 @@
+.navbar-brand {
+    font-weight: bold;
+}
+.task-card {
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    cursor: move;
+}
+.task-card.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+.task-status {
+    font-weight: bold;
+}
+.status-todo { color: #6c757d; }
+.status-in-progress { color: #0dcaf0; }
+.status-done { color: #198754; }
+.status-overdue { color: #dc3545; }
+.loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+.status-column {
+    min-height: 200px;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    padding: 1rem;
+}
+.status-column h5 {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+} 

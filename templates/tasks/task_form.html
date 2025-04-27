@@ -22,7 +22,7 @@
                     {% endif %}
 
                     <div class="mb-3">
-                        <label for="id_title" class="form-label">Назва</label>
+                        <label for="id_title" class="form-label">Name</label>
                         <input type="text" class="form-control {% if form.title.errors %}is-invalid{% endif %}" 
                                id="id_title" name="title" value="{{ form.title.value|default:'' }}" required>
                         {% if form.title.errors %}

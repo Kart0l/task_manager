@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User profile{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ user.get_full_name|default:user.username }}</h5>
+                    <p class="text-muted">{{ profile.get_role_display }}</p>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'tasks:task_create' %}" class="btn btn-primary">
+                            Create new task
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Total statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <h6>Total tasks</h6>
+                            <h3>{{ total_tasks }}</h3>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h6>Completed</h6>
+                            <h3>{{ completed_tasks }}</h3>
+                        </div>
+                        <div class="col-6">
+                            <h6>In progress</h6>
+                            <h3>{{ in_progress_tasks }}</h3>
+                        </div>
+                        <div class="col-6">
+                            <h6>Overdue</h6>
+                            <h3>{{ overdue_tasks }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <!-- User information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">User information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Username:</strong> {{ user.username }}</p>
+                            <p><strong>Email:</strong> {{ user.email }}</p>
+                            <p><strong>Role:</strong> {{ profile.get_role_display }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Registration date:</strong> {{ profile.created_at|date:"d.m.Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if total_tasks > 0 %}
+            <!-- Priority distribution -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Priority distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-4 text-center">
+                            <h6>High</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-danger priority-high" role="progressbar" 
+                                     style="width: 0%;" 
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-value="{{ priority_stats.high|default:0 }}">
+                                     {{ priority_stats.high|default:0 }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <h6>Medium</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-warning priority-medium" role="progressbar" 
+                                     style="width: 0%;" 
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-value="{{ priority_stats.medium|default:0 }}">
+                                     {{ priority_stats.medium|default:0 }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <h6>Low</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-success priority-low" role="progressbar" 
+                                     style="width: 0%;"
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-value="{{ priority_stats.low|default:0 }}">
+                                     {{ priority_stats.low|default:0 }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status distribution -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Status distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-4 text-center">
+                            <h6>Pending</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar status-todo" role="progressbar" 
+                                     style="width: 0%;" 
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-value="{{ status_stats.todo|default:0 }}">
+                                     {{ status_stats.todo|default:0 }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <h6>In progress</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-info status-in-progress" role="progressbar" 
+                                     style="width: 0%;" 
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-value="{{ status_stats.in_progress|default:0 }}">
+                                     {{ status_stats.in_progress|default:0 }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4 text-center">
+                            <h6>Completed</h6>
+                            <div class="progress mb-3">
+                                <div class="progress-bar bg-success status-done" role="progressbar" 
+                                     style="width: 0%;" 
+                                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                     data-value="{{ status_stats.done|default:0 }}">
+                                     {{ status_stats.done|default:0 }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set values for priority bars
+        document.querySelectorAll('.progress-bar[data-value]').forEach(function(bar) {
+            const value = parseFloat(bar.getAttribute('data-value'));
+            bar.style.width = value + '%';
+            bar.setAttribute('aria-valuenow', value);
+        });
+    });
+</script>
+{% endblock %} 

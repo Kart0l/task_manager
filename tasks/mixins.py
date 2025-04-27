@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from django.http import JsonResponse
 from django.template.loader import render_to_string
-from .standart_value import STATUS_CHOICES, PRIORITY_CHOICES, TASK_TYPE_CHOICES
+from core.standard_values import STATUS_CHOICES, PRIORITY_CHOICES, TASK_TYPE_CHOICES
 
 class BootstrapFormMixin:
     def __init__(self, *args, **kwargs):

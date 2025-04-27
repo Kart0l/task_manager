@@ -2,9 +2,10 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.utils import timezone
-from .models import Task, Profile, Comment
+from .models import Task, Comment
+from accounts.models import Profile
 from .forms import TaskForm
-from .standart_value import STATUS_CHOICES, PRIORITY_CHOICES, TASK_TYPE_CHOICES
+from core.standard_values import STATUS_CHOICES, PRIORITY_CHOICES, TASK_TYPE_CHOICES
 import datetime
 
 
@@ -97,7 +98,8 @@ class ViewTests(BaseTestCase):
     def test_complete_task_view(self):
         self.task.assignee = self.user
         self.task.save()
-        response = self.client.get(reverse("tasks:complete_task", args=[self.task.pk]))
-        self.assertEqual(response.status_code, 302)  # Redirect status
+        response = self.client.post(reverse("tasks:complete_task", args=[self.task.pk]))
         self.task.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "success")
         self.assertEqual(self.task.status, "done")
